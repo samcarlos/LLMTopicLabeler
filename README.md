@@ -12,9 +12,9 @@ from LLMTopicLabeler import LLMTopicLabeler
 #load data
 newsgroups_train = fetch_20newsgroups(subset='train')
 
-def embed_topic_text(topic_text: str) -> np.array:
+def embed_topic_text(text):
     # Use ollama to embed the topic text
-    response = ollama.embeddings(model="mxbai-embed-large", prompt=topic_text)
+    response = ollama.embeddings(model="mxbai-embed-large", prompt=text)
     temp_embedding = np.array(response["embedding"]).reshape(1,-1)
     return temp_embedding
 
