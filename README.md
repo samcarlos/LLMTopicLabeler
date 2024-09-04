@@ -26,7 +26,7 @@ embeddings_pd['paragraph'] = newsgroups_train.data
 
 #build model
 auto_classifier = LLMTopicLabeler()
-model, predictions, labels, optimal_cutoff = auto_classifier.iterative_topic_classification('taxes', embeddings_pd, 
+auto_classifier.iterative_topic_classification('taxes', embeddings_pd, 
                                                                                             y_iterations = 5, quantiles_cutoff = [.999, .995,.99,.985])
 #predict
 predictions = auto_classifier.predict(embeddings_pd)
