@@ -1,6 +1,18 @@
 # LLMTopicLabeler
-Some code to demonstrate how to use LLMs to automatically label text data. Below is an example on how to use it in python
 
+LLMs are incredibly good at labeling text without prior data. However, they have limitations, particularly when dealing with multiple topics. For example, asking an LLM to distinguish between 20 different topics in a single prompt can lead to confusion and inconsistent results. Moreover, it can be very time consuming or costly to have seperate prompts / queries for each individual topic.
+The Solution: I propose using LLMs iteratively to label your dataset and build a supervised model. Here’s the process:
+    ## 1. Model Building:
+        Embed all texts into some numeric representation (here I suggest using embeddings from an LLM but could be something else like TF-IDF)
+        Embed the topic and create an initial supervised model with the topic as the positive class (1) and all other texts as the negative class (0).
+    ## 2. Iterative Refinement:
+        Predict topic relevance for all texts.
+        Send the top K predictions to an LLM for validation. If validated, adjust the labels to correspond that these are of the positive class.
+        Retrain the model.
+    ## 3. Optimal Cutoff:
+        Once the training set is complete, determine the optimal cutoff by analyzing prediction percentiles and the error rate. If that percentile’s error rate is above a certain threshold (here I use 50%) then stop and use the previous threshold.
+
+Below is an example on how to use it this code in python.
 
 ```import numpy as np
 import pandas as pd
