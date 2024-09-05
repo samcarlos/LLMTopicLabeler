@@ -2,7 +2,8 @@
 
 LLMs are incredibly good at labeling text without prior data. However, they have limitations, particularly when dealing with multiple topics. For example, asking an LLM to distinguish between 20 different topics in a single prompt can lead to confusion and inconsistent results. Moreover, it can be very time consuming or costly to have seperate prompts / queries for each individual topic.
 
-The Solution: I propose using LLMs iteratively to label your dataset and build a supervised model. Here’s the process:
+The Solution: I propose using LLMs iteratively to label your dataset and build a supervised model. 
+
     1. Model Building:
         Embed all texts into some numeric representation (here I suggest using embeddings from an LLM but could be something else like TF-IDF)
         Embed the topic and create an initial supervised model with the topic as the positive class (1) and all other texts as the negative class (0).
