@@ -160,10 +160,9 @@ class LLMTopicLabeler:
             predictions = self.model.predict(embeddings_df[self.var_names])
             if temp_y.sum() > num_obs_stopping_criteria: 
                 break
-
+        
         self.optimal_cutoff, _ = self.find_optimal_cutoff(np.array(embeddings_df[text_col]), predictions, topic_text, quantiles=quantiles_cutoff )
-
-        return self.model, predictions, temp_y, self.optimal_cutoff
+        self.labels = temp_y
 
     def predict(self, embeddings):
         """
