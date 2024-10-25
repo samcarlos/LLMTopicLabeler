@@ -53,7 +53,7 @@ class LLMTopicLabeler:
         model.fit(X_train, y_train)
         self.model = model
 
-    def refine_predictions_with_chat_agent(self, paragraphs, top_indices, topic_text, threshold=0.7):
+    def refine_predictions_with_chat_agent(self, paragraphs, top_indices, topic_text):
         """
         Refine predictions using a chat agent.
 
@@ -72,17 +72,20 @@ class LLMTopicLabeler:
         for idx in top_indices:
             paragraph = paragraphs[idx]
             prompt = f"""The topic is: '{topic_text}'. 
-            Does the following paragraph include this topic in the discussion? It could be specifically about or generally related to the topic. Respond with 'Yes' or 'No' and provide a confidence score between 0 and 1.
+            Does the given text contain or relate to the specified topic? Respond with 'Yes' or 'No' and provide a confidence score between 0 and 1. Mentioning the topic in passing should be considered a 'Yes'.
             
             Return only your decision and reasoning in the form of a json with keys: 'decision', 'confidence', 'reasoning'.
-            Paragraph: {paragraph}"""
+            Text: 
+            {paragraph}"""
 
             response = ollama.chat(
                 model="llama3.1:latest",
                 messages=[{"role": "user", "content": prompt}]
             )
             try:
+                print(paragraph)
                 response_dict = json.loads(response["message"]["content"])
+                print(response["message"]["content"])
                 if 'Yes' in response_dict['decision']:
                     refined_indices.append(idx)
                 else:
@@ -92,7 +95,7 @@ class LLMTopicLabeler:
 
         return refined_indices, refined_indices_bad
 
-    def find_optimal_cutoff(self, paragraphs, probabilities, topic_text, quantiles, target_percentage=0.5, num_obs_to_confirm = 30):
+    def find_optimal_cutoff(self, paragraphs, probabilities, topic_text, quantiles, target_percentage=0.6, num_obs_to_confirm = 30):
         """
         Find the optimal cutoff based on the specified quantiles.
 
@@ -114,13 +117,14 @@ class LLMTopicLabeler:
             refined_indices, _ = self.refine_predictions_with_chat_agent(paragraphs[np.where(probabilities > cutoff)[0]], top_indices, topic_text)
 
             if len(refined_indices) / len(top_indices) < target_percentage:
-                self.optimal_cutoff = cutoff
+                self.optimal_cutoff = np.quantile(probabilities, quantiles[i-1])
                 return np.quantile(probabilities, quantiles[i-1]), len(refined_indices) / len(top_indices)
 
         return None, None
 
-    def iterative_topic_classification(self, topic_text, embeddings_df, y_iterations=20, num_obs_stopping_criteria = 350, var_names = ['embedding_' + str(x) for x in range(1024)],
-                                       quantiles_cutoff = [.9999,.9995,.999,.995,.99,.9], text_col = 'paragraph'):
+    def iterative_topic_classification(self, topic_text, embeddings_df, y_iterations=50, num_obs_stopping_criteria = 350, var_names = ['embedding_' + str(x) for x in range(1024)],
+                                       quantiles_cutoff = [.9999,.9995,.999,.995,.99,.9], text_col = 'paragraph',
+                                       target_percentage=0.3, num_obs_to_confirm = 20):
         """
         Perform iterative topic classification.
 
@@ -145,7 +149,7 @@ class LLMTopicLabeler:
         predictions = self.model.predict(embeddings_df[var_names])
 
         for iteration in range(y_iterations):
-            top_x = 25 + 20*iteration
+            top_x = 25 
             top_indices = np.argsort(predictions)
             top_indices = [i for i in top_indices if i not in np.where(temp_y == 1)[0]]
             top_indices = [i for i in top_indices if i not in self.refined_indices_bad_list]
@@ -158,10 +162,12 @@ class LLMTopicLabeler:
             self.model = model
 
             predictions = self.model.predict(embeddings_df[self.var_names])
+            print(temp_y.sum())
             if temp_y.sum() > num_obs_stopping_criteria: 
+                print('Finished Finding Examples')
                 break
-        
-        self.optimal_cutoff, _ = self.find_optimal_cutoff(np.array(embeddings_df[text_col]), predictions, topic_text, quantiles=quantiles_cutoff )
+        print('Beginning to final cutoff')
+        self.optimal_cutoff, _ = self.find_optimal_cutoff(np.array(embeddings_df[text_col]), predictions, topic_text, quantiles=quantiles_cutoff, target_percentage = target_percentage, num_obs_to_confirm=num_obs_to_confirm )
         self.labels = temp_y
 
     def predict(self, embeddings):
